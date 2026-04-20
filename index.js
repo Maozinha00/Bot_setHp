@@ -115,7 +115,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                     .setStyle(ButtonStyle.Danger)
             );
 
-            await canal.send({
+            const msg = await canal.send({
                 content:
                     `📋 **PEDIDO DE SET**\n\n` +
                     "```" +
@@ -130,6 +130,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 components: [row]
             });
 
+            // 🔥 SALVA DADOS NA MENSAGEM (IMPORTANTE)
+            await msg.edit({
+                content: msg.content + `\n\n📦 DATA:||${JSON.stringify(dados)}||`
+            });
+
             return interaction.reply({
                 content: "✅ Pedido enviado!",
                 ephemeral: true
@@ -140,16 +145,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.isButton() && interaction.customId.startsWith('aprovar_')) {
 
             const userId = interaction.customId.split('_')[1];
+
             const membro = await interaction.guild.members.fetch(userId).catch(() => null);
 
             if (!membro) {
                 return interaction.reply({ content: "❌ Usuário não encontrado", ephemeral: true });
             }
 
+            // 🔥 PEGAR DADOS SALVOS NA MENSAGEM
+            const raw = interaction.message.content.split('📦 DATA:||')[1];
+            const dados = JSON.parse(raw.replace('||', '').trim());
+
             await membro.roles.add(CARGO_ID).catch(() => null);
             await membro.send("✅ Seu set foi aprovado!").catch(() => null);
 
-            // LOG APROVADOS (RELATÓRIO COMPLETO)
             const canalAprovados = await client.channels.fetch(CANAL_APROVADOS).catch(() => null);
 
             if (canalAprovados) {
@@ -177,6 +186,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.isButton() && interaction.customId.startsWith('reprovar_')) {
 
             const userId = interaction.customId.split('_')[1];
+
             const membro = await interaction.guild.members.fetch(userId).catch(() => null);
 
             if (membro) {
