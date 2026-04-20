@@ -17,38 +17,40 @@ const client = new Client({
     ]
 });
 
+const CANAL_LOG = '1495178025602515177';
+
 client.once(Events.ClientReady, () => {
     console.log(`✅ ${client.user.tag} está online!`);
 });
 
-// COMANDO PARA CRIAR O PAINEL
+// PAINEL
 client.on(Events.MessageCreate, async (message) => {
     if (message.content === '!setpainel') {
 
         const botao = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('abrir_form')
-                .setLabel('📋 Fazer Cadastro')
+                .setCustomId('pedir_set')
+                .setLabel('📋 Pedir Set')
                 .setStyle(ButtonStyle.Primary)
         );
 
         await message.channel.send({
-            content: "🏥 **HOSPITAL BELLA**\nClique no botão abaixo para fazer o cadastro:",
+            content: "🏥 **HOSPITAL BELLA - PEDIR SET**\nClique abaixo para solicitar seu cargo:",
             components: [botao]
         });
     }
 });
 
-// INTERAÇÃO (BOTÃO + MODAL)
+// INTERAÇÕES
 client.on(Events.InteractionCreate, async (interaction) => {
 
-    // CLICOU NO BOTÃO
+    // BOTÃO
     if (interaction.isButton()) {
-        if (interaction.customId === 'abrir_form') {
+        if (interaction.customId === 'pedir_set') {
 
             const modal = new ModalBuilder()
-                .setCustomId('form_funcionario')
-                .setTitle('📋 Cadastro de Funcionário');
+                .setCustomId('form_set')
+                .setTitle('📋 Solicitação de Set');
 
             const id = new TextInputBuilder()
                 .setCustomId('id')
@@ -67,7 +69,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
             const cargo = new TextInputBuilder()
                 .setCustomId('cargo')
-                .setLabel('Cargo')
+                .setLabel('Cargo desejado')
                 .setStyle(TextInputStyle.Short);
 
             const responsavel = new TextInputBuilder()
@@ -87,9 +89,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
     }
 
-    // ENVIO DO FORMULÁRIO
+    // ENVIO
     if (interaction.isModalSubmit()) {
-        if (interaction.customId === 'form_funcionario') {
+        if (interaction.customId === 'form_set') {
 
             const id = interaction.fields.getTextInputValue('id');
             const nome = interaction.fields.getTextInputValue('nome');
@@ -97,18 +99,56 @@ client.on(Events.InteractionCreate, async (interaction) => {
             const cargo = interaction.fields.getTextInputValue('cargo');
             const responsavel = interaction.fields.getTextInputValue('responsavel');
 
-            await interaction.reply({
+            const canal = await client.channels.fetch(CANAL_LOG);
+
+            const botoes = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('aprovar')
+                    .setLabel('✅ Aprovar')
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId('reprovar')
+                    .setLabel('❌ Reprovar')
+                    .setStyle(ButtonStyle.Danger)
+            );
+
+            await canal.send({
                 content:
-                `🏥 **NOVO FUNCIONÁRIO REGISTRADO**\n\n` +
+                `📋 **NOVO PEDIDO DE SET**\n\n` +
                 `🆔 ID: ${id}\n` +
                 `👤 Nome: ${nome}\n` +
                 `🏥 Unidade: ${unidade}\n` +
                 `💼 Cargo: ${cargo}\n` +
-                `📌 Responsável: ${responsavel}`,
-                ephemeral: false
+                `📌 Responsável: ${responsavel}\n\n` +
+                `⏳ Status: Pendente`,
+                components: [botoes]
+            });
+
+            await interaction.reply({
+                content: "✅ Seu pedido foi enviado para análise!",
+                ephemeral: true
             });
         }
     }
+
+    // APROVAR
+    if (interaction.isButton() && interaction.customId === 'aprovar') {
+
+        await interaction.update({
+            content: interaction.message.content.replace('Pendente', 'Aprovado ✅'),
+            components: []
+        });
+    }
+
+    // REPROVAR
+    if (interaction.isButton() && interaction.customId === 'reprovar') {
+
+        await interaction.update({
+            content: interaction.message.content.replace('Pendente', 'Reprovado ❌'),
+            components: []
+        });
+    }
+
 });
 
 client.login('SEU_TOKEN_AQUI');
