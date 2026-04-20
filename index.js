@@ -13,11 +13,12 @@ const {
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent // 🔥 ESSENCIAL
     ]
 });
 
-// 🔧 CONFIG (pegando do sistema)
+// 🔧 CONFIG (Railway Variables)
 const TOKEN = process.env.TOKEN;
 const CANAL_LOG = '1495178025602515177';
 
@@ -48,6 +49,7 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.InteractionCreate, async (interaction) => {
     try {
 
+        // ABRIR FORM
         if (interaction.isButton() && interaction.customId === 'pedir_set') {
 
             const modal = new ModalBuilder()
@@ -74,6 +76,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             return interaction.showModal(modal);
         }
 
+        // ENVIO FORM
         if (interaction.isModalSubmit() && interaction.customId === 'form_set') {
 
             const dados = {
@@ -119,6 +122,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             });
         }
 
+        // APROVAR
         if (interaction.isButton() && interaction.customId === 'aprovar') {
             return interaction.update({
                 content: interaction.message.content.replace('Pendente', 'Aprovado ✅'),
@@ -126,6 +130,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             });
         }
 
+        // REPROVAR
         if (interaction.isButton() && interaction.customId === 'reprovar') {
             return interaction.update({
                 content: interaction.message.content.replace('Pendente', 'Reprovado ❌'),
@@ -134,7 +139,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
     } catch (err) {
-        console.error(err);
+        console.error('ERRO:', err);
     }
 });
 
