@@ -10,6 +10,18 @@ const {
     TextInputStyle
 } = require('discord.js');
 
+// ================= CONFIG =================
+const TOKEN = process.env.TOKEN;
+const CANAL_LOG = '1495178025602515177';
+const CARGO_ID = '1495178024759332915';
+
+// ==========================================
+
+if (!TOKEN) {
+    console.error("❌ TOKEN NÃO DEFINIDO!");
+    process.exit(1);
+}
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -19,52 +31,42 @@ const client = new Client({
     ]
 });
 
-// 🔧 CONFIG
-const TOKEN = process.env.TOKEN;
-const CANAL_LOG = '1495178025602515177';
-const CARGO_ID = '1495178024759332915';
-
-// 🔐 VERIFICA TOKEN
-if (!TOKEN) {
-    console.error("❌ TOKEN NÃO DEFINIDO");
-    process.exit(1);
-}
-
-// ONLINE
+// ========= ONLINE =========
 client.once(Events.ClientReady, () => {
     console.log(`🔥 ${client.user.tag} ONLINE`);
 });
 
-// PAINEL
+// ========= PAINEL =========
 client.on(Events.MessageCreate, async (message) => {
-    if (message.content === '!setpainel' && !message.author.bot) {
+    if (message.author.bot) return;
 
-        const botao = new ActionRowBuilder().addComponents(
+    if (message.content === '!setpainel') {
+        const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('pedir_set')
+                .setCustomId('abrir_form')
                 .setLabel('📋 Pedir Set')
                 .setStyle(ButtonStyle.Primary)
         );
 
         await message.channel.send({
-            content: "🏥 **HOSPITAL BELLA - SET RP**\nClique abaixo para solicitar seu cargo:",
-            components: [botao]
+            content: "🏥 **HOSPITAL BELLA RP**\nClique para solicitar seu cargo:",
+            components: [row]
         });
     }
 });
 
-// INTERAÇÕES
+// ========= INTERAÇÕES =========
 client.on(Events.InteractionCreate, async (interaction) => {
     try {
 
-        // ABRIR FORM
-        if (interaction.isButton() && interaction.customId === 'pedir_set') {
+        // ===== ABRIR FORM =====
+        if (interaction.isButton() && interaction.customId === 'abrir_form') {
 
             const modal = new ModalBuilder()
                 .setCustomId('form_set')
-                .setTitle('📋 Solicitação de Set');
+                .setTitle('📋 Pedido de Set');
 
-            const campo = (id, label) =>
+            const input = (id, label) =>
                 new ActionRowBuilder().addComponents(
                     new TextInputBuilder()
                         .setCustomId(id)
@@ -74,26 +76,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 );
 
             modal.addComponents(
-                campo('id', 'ID'),
-                campo('nome', 'Nome'),
-                campo('unidade', 'Unidade'),
-                campo('cargo', 'Cargo desejado'),
-                campo('responsavel', 'Responsável (@)')
+                input('id', 'ID'),
+                input('nome', 'Nome'),
+                input('unidade', 'Unidade'),
+                input('cargo', 'Cargo desejado'),
+                input('responsavel', 'Responsável (@)')
             );
 
             return interaction.showModal(modal);
         }
 
-        // ENVIO FORM
+        // ===== ENVIAR PEDIDO =====
         if (interaction.isModalSubmit() && interaction.customId === 'form_set') {
 
             const canal = await client.channels.fetch(CANAL_LOG).catch(() => null);
 
             if (!canal || !canal.isTextBased()) {
-                return interaction.reply({ content: "❌ Canal inválido.", ephemeral: true });
+                return interaction.reply({
+                    content: "❌ Canal de logs inválido.",
+                    ephemeral: true
+                });
             }
 
             const dados = {
+                user: interaction.user.id,
                 id: interaction.fields.getTextInputValue('id'),
                 nome: interaction.fields.getTextInputValue('nome'),
                 unidade: interaction.fields.getTextInputValue('unidade'),
@@ -101,37 +107,37 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 responsavel: interaction.fields.getTextInputValue('responsavel')
             };
 
-            const botoes = new ActionRowBuilder().addComponents(
+            const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                    .setCustomId(`aprovar_${interaction.user.id}`)
+                    .setCustomId(`aprovar_${dados.user}`)
                     .setLabel('✅ Aprovar')
                     .setStyle(ButtonStyle.Success),
                 new ButtonBuilder()
-                    .setCustomId(`reprovar_${interaction.user.id}`)
+                    .setCustomId(`reprovar_${dados.user}`)
                     .setLabel('❌ Reprovar')
                     .setStyle(ButtonStyle.Danger)
             );
 
             await canal.send({
                 content:
-                `📋 **NOVO PEDIDO DE SET**\n\n` +
-                `👤 Solicitante: <@${interaction.user.id}>\n` +
+                `📋 **PEDIDO DE SET**\n\n` +
+                `👤 Usuário: <@${dados.user}>\n` +
                 `🆔 ID: ${dados.id}\n` +
-                `👤 Nome: ${dados.nome}\n` +
+                `📛 Nome: ${dados.nome}\n` +
                 `🏥 Unidade: ${dados.unidade}\n` +
                 `💼 Cargo: ${dados.cargo}\n` +
                 `📌 Responsável: ${dados.responsavel}\n\n` +
                 `⏳ Status: Pendente`,
-                components: [botoes]
+                components: [row]
             });
 
             return interaction.reply({
-                content: "✅ Seu pedido foi enviado!",
+                content: "✅ Pedido enviado com sucesso!",
                 ephemeral: true
             });
         }
 
-        // APROVAR
+        // ===== APROVAR =====
         if (interaction.isButton() && interaction.customId.startsWith('aprovar_')) {
 
             const userId = interaction.customId.split('_')[1];
@@ -143,40 +149,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
             await membro.roles.add(CARGO_ID).catch(() => null);
 
-            await membro.send(`✅ Seu set foi aprovado no hospital!`).catch(() => null);
+            await membro.send("✅ Seu set foi aprovado!").catch(() => null);
 
             return interaction.update({
-                content:
-                interaction.message.content.replace('Pendente', `Aprovado por <@${interaction.user.id}> ✅`),
+                content: interaction.message.content.replace('Pendente', `Aprovado por <@${interaction.user.id}> ✅`),
                 components: []
             });
         }
 
-        // REPROVAR
+        // ===== REPROVAR =====
         if (interaction.isButton() && interaction.customId.startsWith('reprovar_')) {
 
             const userId = interaction.customId.split('_')[1];
             const membro = await interaction.guild.members.fetch(userId).catch(() => null);
 
             if (membro) {
-                await membro.send(`❌ Seu pedido de set foi recusado.`).catch(() => null);
+                await membro.send("❌ Seu pedido foi recusado.").catch(() => null);
             }
 
             return interaction.update({
-                content:
-                interaction.message.content.replace('Pendente', `Reprovado por <@${interaction.user.id}> ❌`),
+                content: interaction.message.content.replace('Pendente', `Reprovado por <@${interaction.user.id}> ❌`),
                 components: []
             });
         }
 
     } catch (err) {
-        console.error("ERRO:", err);
+        console.error("🚨 ERRO:", err);
     }
 });
 
-// LOGIN
+// ========= LOGIN =========
 client.login(TOKEN);
 
-// ANTI-CRASH
+// ========= ANTI-CRASH =========
 process.on('unhandledRejection', console.error);
 process.on('uncaughtException', console.error);
