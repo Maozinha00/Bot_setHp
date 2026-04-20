@@ -1,19 +1,12 @@
 {
-  "name": "hospital-bot",
+  "name": "bot-discord",
   "version": "1.0.0",
-  "description": "Um bot do Discord para coletar informações sobre funcionários de um hospital.",
+  "description": "Bot hospital RP",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "keywords": [
-    "discord",
-    "bot",
-    "hospital"
-  ],
-  "author": "Henrique",
-  "license": "ISC",
   "dependencies": {
-    "discord.js": "^14.0.0"  // ou a versão mais recente do discord.js
+    "discord.js": "^14.14.1"
   }
 }
