@@ -117,16 +117,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
             await canal.send({
                 content:
-                `📋 **PEDIDO DE SET**\n\n` +
-                "```" +
-                `Nome: ${dados.nome}\n` +
-                `ID: ${dados.id}\n` +
-                `Unidade: ${dados.unidade}\n` +
-                `Cargo: ${dados.cargo}\n` +
-                `Responsável: ${dados.responsavel}\n` +
-                "```" +
-                `\n👤 Usuário: <@${dados.user}>\n` +
-                `⏳ Status: Pendente`,
+                    `📋 **PEDIDO DE SET**\n\n` +
+                    "```" +
+                    `Nome: ${dados.nome}\n` +
+                    `ID: ${dados.id}\n` +
+                    `Unidade: ${dados.unidade}\n` +
+                    `Cargo: ${dados.cargo}\n` +
+                    `Responsável: ${dados.responsavel}\n` +
+                    "```\n" +
+                    `👤 Usuário: <@${dados.user}>\n` +
+                    `⏳ Status: Pendente`,
                 components: [row]
             });
 
@@ -146,18 +146,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 return interaction.reply({ content: "❌ Usuário não encontrado", ephemeral: true });
             }
 
-            // cargo
             await membro.roles.add(CARGO_ID).catch(() => null);
-
-            // DM
             await membro.send("✅ Seu set foi aprovado!").catch(() => null);
 
-            // LOG APROVADO
+            // LOG APROVADOS (RELATÓRIO COMPLETO)
             const canalAprovados = await client.channels.fetch(CANAL_APROVADOS).catch(() => null);
 
             if (canalAprovados) {
                 await canalAprovados.send(
-                    `✅ **SET APROVADO**\n\n👤 <@${userId}>\n👮 Staff: <@${interaction.user.id}>`
+                    `📋 **PEDIDO DE SET - APROVADO**\n\n` +
+                    "```" +
+                    `Nome: ${dados.nome}\n` +
+                    `ID: ${dados.id}\n` +
+                    `Unidade: ${dados.unidade}\n` +
+                    `Cargo: ${dados.cargo}\n` +
+                    `Responsável: ${dados.responsavel}\n` +
+                    "```\n" +
+                    `👤 Usuário: <@${userId}>\n` +
+                    `👮 Aprovado por: <@${interaction.user.id}> ✅`
                 );
             }
 
