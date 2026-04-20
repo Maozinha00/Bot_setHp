@@ -18,7 +18,7 @@ const client = new Client({
 });
 
 // 🔧 CONFIG
-const TOKEN = 'MTQ5NTgwODk4MzYyNDE5MjE1MA.Gla6Zi.vqgLM8gYniT9BRqjZ72gkY2rnsSvtYvq0Lw8Cs';
+const TOKEN = 'MTQ5NTgwODk4MzYyNDE5MjE1MA.G5RTn4.osjK6ZxOPhwqqtdGs5_C-IXVm2u_Q6xCngKANc';
 const CANAL_LOG = '1495178025602515177';
 
 // ONLINE
