@@ -1,7 +1,7 @@
 {
-  "name": "bot-discord",
+  "name": "hospital-bot",
   "version": "1.0.0",
-  "description": "Bot hospital RP",
+  "description": "Sistema RP Hospital / Pedir Set",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
