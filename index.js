@@ -13,7 +13,7 @@ const {
 // ================= CONFIG =================
 const TOKEN = process.env.TOKEN;
 const CANAL_LOG = '1495178025602515177';
-const CANAL_APROVADOS = '1495178025602515177';
+const CANAL_APROVADOS = '1495790507182522450';
 const CARGO_ID = '1495178024759332915';
 // ==========================================
 
