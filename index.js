@@ -1,57 +1,114 @@
-const { Client, GatewayIntentBits, Events } = require('discord.js');
+const {
+    Client,
+    GatewayIntentBits,
+    Events,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle
+} = require('discord.js');
 
-// Criação do cliente do bot
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
-
-// Evento quando o bot estiver pronto
-client.once(Events.ClientReady, () => {
-    console.log(`Bot ${client.user.tag} está online e pronto para ajudar!`);
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages
+    ]
 });
 
-// Comando para pedir informações sobre um funcionário
+client.once(Events.ClientReady, () => {
+    console.log(`✅ ${client.user.tag} está online!`);
+});
+
+// COMANDO PARA CRIAR O PAINEL
 client.on(Events.MessageCreate, async (message) => {
-    if (message.content.startsWith('!pedir_informacoes') && !message.author.bot) {
-        await message.author.send("Por favor, forneça as informações do funcionário na forma de mensagens separadas.\n" +
-            "Responda na seguinte ordem:\n" +
-            "1. **Id**\n" +
-            "2. **Nome**\n" +
-            "3. **Unidade**\n" +
-            "4. **Cargo**\n" +
-            "5. **Responsável** (mencionar o responsável)");
+    if (message.content === '!setpainel') {
 
-        // Aguardando as respostas do usuário
-        const filter = response => response.author.id === message.author.id;
+        const botao = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('abrir_form')
+                .setLabel('📋 Fazer Cadastro')
+                .setStyle(ButtonStyle.Primary)
+        );
 
-        try {
-            const id_msg = await message.author.dmChannel.awaitMessages({ filter, max: 1, time: 30000, errors: ['time'] });
-            const id_value = id_msg.first().content;
+        await message.channel.send({
+            content: "🏥 **HOSPITAL BELLA**\nClique no botão abaixo para fazer o cadastro:",
+            components: [botao]
+        });
+    }
+});
 
-            const nome_msg = await message.author.dmChannel.awaitMessages({ filter, max: 1, time: 30000, errors: ['time'] });
-            const nome_value = nome_msg.first().content;
+// INTERAÇÃO (BOTÃO + MODAL)
+client.on(Events.InteractionCreate, async (interaction) => {
 
-            const unidade_msg = await message.author.dmChannel.awaitMessages({ filter, max: 1, time: 30000, errors: ['time'] });
-            const unidade_value = unidade_msg.first().content;
+    // CLICOU NO BOTÃO
+    if (interaction.isButton()) {
+        if (interaction.customId === 'abrir_form') {
 
-            const cargo_msg = await message.author.dmChannel.awaitMessages({ filter, max: 1, time: 30000, errors: ['time'] });
-            const cargo_value = cargo_msg.first().content;
+            const modal = new ModalBuilder()
+                .setCustomId('form_funcionario')
+                .setTitle('📋 Cadastro de Funcionário');
 
-            const responsavel_msg = await message.author.dmChannel.awaitMessages({ filter, max: 1, time: 30000, errors: ['time'] });
-            const responsavel_value = responsavel_msg.first().content;
+            const id = new TextInputBuilder()
+                .setCustomId('id')
+                .setLabel('ID')
+                .setStyle(TextInputStyle.Short);
 
-            // Mensagem final de confirmação
-            await message.channel.send(`**Informações do Funcionário Registradas:**\n` +
-                `Id: ${id_value}\n` +
-                `Nome: ${nome_value}\n` +
-                `Unidade: ${unidade_value}\n` +
-                `Cargo: ${cargo_value}\n` +
-                `Responsável: ${responsavel_value}`);
+            const nome = new TextInputBuilder()
+                .setCustomId('nome')
+                .setLabel('Nome')
+                .setStyle(TextInputStyle.Short);
 
-        } catch (err) {
-            await message.channel.send("Ocorreu um erro ou o tempo esgotou. Certifique-se de responder a todas as perguntas.");
+            const unidade = new TextInputBuilder()
+                .setCustomId('unidade')
+                .setLabel('Unidade')
+                .setStyle(TextInputStyle.Short);
+
+            const cargo = new TextInputBuilder()
+                .setCustomId('cargo')
+                .setLabel('Cargo')
+                .setStyle(TextInputStyle.Short);
+
+            const responsavel = new TextInputBuilder()
+                .setCustomId('responsavel')
+                .setLabel('Responsável (@)')
+                .setStyle(TextInputStyle.Short);
+
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(id),
+                new ActionRowBuilder().addComponents(nome),
+                new ActionRowBuilder().addComponents(unidade),
+                new ActionRowBuilder().addComponents(cargo),
+                new ActionRowBuilder().addComponents(responsavel)
+            );
+
+            await interaction.showModal(modal);
+        }
+    }
+
+    // ENVIO DO FORMULÁRIO
+    if (interaction.isModalSubmit()) {
+        if (interaction.customId === 'form_funcionario') {
+
+            const id = interaction.fields.getTextInputValue('id');
+            const nome = interaction.fields.getTextInputValue('nome');
+            const unidade = interaction.fields.getTextInputValue('unidade');
+            const cargo = interaction.fields.getTextInputValue('cargo');
+            const responsavel = interaction.fields.getTextInputValue('responsavel');
+
+            await interaction.reply({
+                content:
+                `🏥 **NOVO FUNCIONÁRIO REGISTRADO**\n\n` +
+                `🆔 ID: ${id}\n` +
+                `👤 Nome: ${nome}\n` +
+                `🏥 Unidade: ${unidade}\n` +
+                `💼 Cargo: ${cargo}\n` +
+                `📌 Responsável: ${responsavel}`,
+                ephemeral: false
+            });
         }
     }
 });
 
-// Comando de ajuda
-client.on(Events.MessageCreate, (message) => {
-    if (message.content.startsWith('!ajuda
+client.login('SEU_TOKEN_AQUI');
