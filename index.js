@@ -13,8 +13,8 @@ const {
 // ================= CONFIG =================
 const TOKEN = process.env.TOKEN;
 const CANAL_LOG = '1495178025602515177';
+const CANAL_APROVADOS = '1495178025602515177';
 const CARGO_ID = '1495178024759332915';
-
 // ==========================================
 
 if (!TOKEN) {
@@ -59,14 +59,14 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.InteractionCreate, async (interaction) => {
     try {
 
-        // ===== ABRIR FORM =====
+        // ===== FORM =====
         if (interaction.isButton() && interaction.customId === 'abrir_form') {
 
             const modal = new ModalBuilder()
                 .setCustomId('form_set')
                 .setTitle('📋 Pedido de Set');
 
-            const input = (id, label) =>
+            const campo = (id, label) =>
                 new ActionRowBuilder().addComponents(
                     new TextInputBuilder()
                         .setCustomId(id)
@@ -76,26 +76,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 );
 
             modal.addComponents(
-                input('id', 'ID'),
-                input('nome', 'Nome'),
-                input('unidade', 'Unidade'),
-                input('cargo', 'Cargo desejado'),
-                input('responsavel', 'Responsável (@)')
+                campo('id', 'ID'),
+                campo('nome', 'Nome'),
+                campo('unidade', 'Unidade'),
+                campo('cargo', 'Cargo desejado'),
+                campo('responsavel', 'Responsável (@)')
             );
 
             return interaction.showModal(modal);
         }
 
-        // ===== ENVIAR PEDIDO =====
+        // ===== ENVIO =====
         if (interaction.isModalSubmit() && interaction.customId === 'form_set') {
 
             const canal = await client.channels.fetch(CANAL_LOG).catch(() => null);
 
-            if (!canal || !canal.isTextBased()) {
-                return interaction.reply({
-                    content: "❌ Canal de logs inválido.",
-                    ephemeral: true
-                });
+            if (!canal) {
+                return interaction.reply({ content: "❌ Canal inválido", ephemeral: true });
             }
 
             const dados = {
@@ -121,18 +118,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
             await canal.send({
                 content:
                 `📋 **PEDIDO DE SET**\n\n` +
-                `👤 Usuário: <@${dados.user}>\n` +
-                `🆔 ID: ${dados.id}\n` +
-                `📛 Nome: ${dados.nome}\n` +
-                `🏥 Unidade: ${dados.unidade}\n` +
-                `💼 Cargo: ${dados.cargo}\n` +
-                `📌 Responsável: ${dados.responsavel}\n\n` +
+                "```" +
+                `Nome: ${dados.nome}\n` +
+                `ID: ${dados.id}\n` +
+                `Unidade: ${dados.unidade}\n` +
+                `Cargo: ${dados.cargo}\n` +
+                `Responsável: ${dados.responsavel}\n` +
+                "```" +
+                `\n👤 Usuário: <@${dados.user}>\n` +
                 `⏳ Status: Pendente`,
                 components: [row]
             });
 
             return interaction.reply({
-                content: "✅ Pedido enviado com sucesso!",
+                content: "✅ Pedido enviado!",
                 ephemeral: true
             });
         }
@@ -144,12 +143,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
             const membro = await interaction.guild.members.fetch(userId).catch(() => null);
 
             if (!membro) {
-                return interaction.reply({ content: "❌ Usuário não encontrado.", ephemeral: true });
+                return interaction.reply({ content: "❌ Usuário não encontrado", ephemeral: true });
             }
 
+            // cargo
             await membro.roles.add(CARGO_ID).catch(() => null);
 
+            // DM
             await membro.send("✅ Seu set foi aprovado!").catch(() => null);
+
+            // LOG APROVADO
+            const canalAprovados = await client.channels.fetch(CANAL_APROVADOS).catch(() => null);
+
+            if (canalAprovados) {
+                await canalAprovados.send(
+                    `✅ **SET APROVADO**\n\n👤 <@${userId}>\n👮 Staff: <@${interaction.user.id}>`
+                );
+            }
 
             return interaction.update({
                 content: interaction.message.content.replace('Pendente', `Aprovado por <@${interaction.user.id}> ✅`),
@@ -178,9 +188,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 });
 
-// ========= LOGIN =========
+// LOGIN
 client.login(TOKEN);
 
-// ========= ANTI-CRASH =========
+// ANTI-CRASH
 process.on('unhandledRejection', console.error);
 process.on('uncaughtException', console.error);
