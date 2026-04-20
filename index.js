@@ -14,6 +14,7 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMembers,
         GatewayIntentBits.MessageContent
     ]
 });
@@ -21,11 +22,12 @@ const client = new Client({
 // 🔧 CONFIG
 const TOKEN = process.env.TOKEN;
 const CANAL_LOG = '1495178025602515177';
+const CARGO_ID = '1495178024759332915';
 
-// 🚨 VERIFICA TOKEN
+// 🔐 VERIFICA TOKEN
 if (!TOKEN) {
-    console.error("❌ TOKEN NÃO DEFINIDO NO RAILWAY!");
-    process.exit(1); // evita crash silencioso
+    console.error("❌ TOKEN NÃO DEFINIDO");
+    process.exit(1);
 }
 
 // ONLINE
@@ -45,7 +47,7 @@ client.on(Events.MessageCreate, async (message) => {
         );
 
         await message.channel.send({
-            content: "🏥 **HOSPITAL BELLA - PEDIR SET**\nClique abaixo para solicitar:",
+            content: "🏥 **HOSPITAL BELLA - SET RP**\nClique abaixo para solicitar seu cargo:",
             components: [botao]
         });
     }
@@ -55,14 +57,14 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.InteractionCreate, async (interaction) => {
     try {
 
-        // FORM
+        // ABRIR FORM
         if (interaction.isButton() && interaction.customId === 'pedir_set') {
 
             const modal = new ModalBuilder()
                 .setCustomId('form_set')
                 .setTitle('📋 Solicitação de Set');
 
-            const criarCampo = (id, label) =>
+            const campo = (id, label) =>
                 new ActionRowBuilder().addComponents(
                     new TextInputBuilder()
                         .setCustomId(id)
@@ -72,27 +74,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 );
 
             modal.addComponents(
-                criarCampo('id', 'ID'),
-                criarCampo('nome', 'Nome'),
-                criarCampo('unidade', 'Unidade'),
-                criarCampo('cargo', 'Cargo desejado'),
-                criarCampo('responsavel', 'Responsável (@)')
+                campo('id', 'ID'),
+                campo('nome', 'Nome'),
+                campo('unidade', 'Unidade'),
+                campo('cargo', 'Cargo desejado'),
+                campo('responsavel', 'Responsável (@)')
             );
 
             return interaction.showModal(modal);
         }
 
-        // ENVIO
+        // ENVIO FORM
         if (interaction.isModalSubmit() && interaction.customId === 'form_set') {
 
             const canal = await client.channels.fetch(CANAL_LOG).catch(() => null);
 
             if (!canal || !canal.isTextBased()) {
-                console.log("❌ Canal inválido ou sem acesso");
-                return interaction.reply({
-                    content: "❌ Erro no canal de envio.",
-                    ephemeral: true
-                });
+                return interaction.reply({ content: "❌ Canal inválido.", ephemeral: true });
             }
 
             const dados = {
@@ -105,11 +103,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
             const botoes = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                    .setCustomId('aprovar')
+                    .setCustomId(`aprovar_${interaction.user.id}`)
                     .setLabel('✅ Aprovar')
                     .setStyle(ButtonStyle.Success),
                 new ButtonBuilder()
-                    .setCustomId('reprovar')
+                    .setCustomId(`reprovar_${interaction.user.id}`)
                     .setLabel('❌ Reprovar')
                     .setStyle(ButtonStyle.Danger)
             );
@@ -117,6 +115,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             await canal.send({
                 content:
                 `📋 **NOVO PEDIDO DE SET**\n\n` +
+                `👤 Solicitante: <@${interaction.user.id}>\n` +
                 `🆔 ID: ${dados.id}\n` +
                 `👤 Nome: ${dados.nome}\n` +
                 `🏥 Unidade: ${dados.unidade}\n` +
@@ -127,35 +126,57 @@ client.on(Events.InteractionCreate, async (interaction) => {
             });
 
             return interaction.reply({
-                content: "✅ Pedido enviado!",
+                content: "✅ Seu pedido foi enviado!",
                 ephemeral: true
             });
         }
 
         // APROVAR
-        if (interaction.isButton() && interaction.customId === 'aprovar') {
+        if (interaction.isButton() && interaction.customId.startsWith('aprovar_')) {
+
+            const userId = interaction.customId.split('_')[1];
+            const membro = await interaction.guild.members.fetch(userId).catch(() => null);
+
+            if (!membro) {
+                return interaction.reply({ content: "❌ Usuário não encontrado.", ephemeral: true });
+            }
+
+            await membro.roles.add(CARGO_ID).catch(() => null);
+
+            await membro.send(`✅ Seu set foi aprovado no hospital!`).catch(() => null);
+
             return interaction.update({
-                content: interaction.message.content.replace('Pendente', 'Aprovado ✅'),
+                content:
+                interaction.message.content.replace('Pendente', `Aprovado por <@${interaction.user.id}> ✅`),
                 components: []
             });
         }
 
         // REPROVAR
-        if (interaction.isButton() && interaction.customId === 'reprovar') {
+        if (interaction.isButton() && interaction.customId.startsWith('reprovar_')) {
+
+            const userId = interaction.customId.split('_')[1];
+            const membro = await interaction.guild.members.fetch(userId).catch(() => null);
+
+            if (membro) {
+                await membro.send(`❌ Seu pedido de set foi recusado.`).catch(() => null);
+            }
+
             return interaction.update({
-                content: interaction.message.content.replace('Pendente', 'Reprovado ❌'),
+                content:
+                interaction.message.content.replace('Pendente', `Reprovado por <@${interaction.user.id}> ❌`),
                 components: []
             });
         }
 
     } catch (err) {
-        console.error("ERRO INTERAÇÃO:", err);
+        console.error("ERRO:", err);
     }
 });
 
 // LOGIN
 client.login(TOKEN);
 
-// ANTI CRASH
+// ANTI-CRASH
 process.on('unhandledRejection', console.error);
 process.on('uncaughtException', console.error);
