@@ -17,8 +17,8 @@ const client = new Client({
     ]
 });
 
-// 🔧 CONFIG
-const TOKEN = 'MTQ5NTgwODk4MzYyNDE5MjE1MA.G5RTn4.osjK6ZxOPhwqqtdGs5_C-IXVm2u_Q6xCngKANc';
+// 🔧 CONFIG (pegando do sistema)
+const TOKEN = process.env.TOKEN;
 const CANAL_LOG = '1495178025602515177';
 
 // ONLINE
@@ -46,65 +46,48 @@ client.on(Events.MessageCreate, async (message) => {
 
 // INTERAÇÕES
 client.on(Events.InteractionCreate, async (interaction) => {
-
     try {
 
-        // BOTÃO
         if (interaction.isButton() && interaction.customId === 'pedir_set') {
 
             const modal = new ModalBuilder()
                 .setCustomId('form_set')
                 .setTitle('📋 Solicitação de Set');
 
-            const id = new TextInputBuilder()
-                .setCustomId('id')
-                .setLabel('ID')
-                .setStyle(TextInputStyle.Short);
-
-            const nome = new TextInputBuilder()
-                .setCustomId('nome')
-                .setLabel('Nome')
-                .setStyle(TextInputStyle.Short);
-
-            const unidade = new TextInputBuilder()
-                .setCustomId('unidade')
-                .setLabel('Unidade')
-                .setStyle(TextInputStyle.Short);
-
-            const cargo = new TextInputBuilder()
-                .setCustomId('cargo')
-                .setLabel('Cargo desejado')
-                .setStyle(TextInputStyle.Short);
-
-            const responsavel = new TextInputBuilder()
-                .setCustomId('responsavel')
-                .setLabel('Responsável (@)')
-                .setStyle(TextInputStyle.Short);
+            const criarCampo = (id, label) =>
+                new ActionRowBuilder().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId(id)
+                        .setLabel(label)
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true)
+                );
 
             modal.addComponents(
-                new ActionRowBuilder().addComponents(id),
-                new ActionRowBuilder().addComponents(nome),
-                new ActionRowBuilder().addComponents(unidade),
-                new ActionRowBuilder().addComponents(cargo),
-                new ActionRowBuilder().addComponents(responsavel)
+                criarCampo('id', 'ID'),
+                criarCampo('nome', 'Nome'),
+                criarCampo('unidade', 'Unidade'),
+                criarCampo('cargo', 'Cargo desejado'),
+                criarCampo('responsavel', 'Responsável (@)')
             );
 
             return interaction.showModal(modal);
         }
 
-        // ENVIO
         if (interaction.isModalSubmit() && interaction.customId === 'form_set') {
 
-            const id = interaction.fields.getTextInputValue('id');
-            const nome = interaction.fields.getTextInputValue('nome');
-            const unidade = interaction.fields.getTextInputValue('unidade');
-            const cargo = interaction.fields.getTextInputValue('cargo');
-            const responsavel = interaction.fields.getTextInputValue('responsavel');
+            const dados = {
+                id: interaction.fields.getTextInputValue('id'),
+                nome: interaction.fields.getTextInputValue('nome'),
+                unidade: interaction.fields.getTextInputValue('unidade'),
+                cargo: interaction.fields.getTextInputValue('cargo'),
+                responsavel: interaction.fields.getTextInputValue('responsavel')
+            };
 
-            const canal = await client.channels.fetch(CANAL_LOG);
+            const canal = await client.channels.fetch(CANAL_LOG).catch(() => null);
 
             if (!canal) {
-                return interaction.reply({ content: "❌ Canal não encontrado!", ephemeral: true });
+                return interaction.reply({ content: "❌ Canal inválido!", ephemeral: true });
             }
 
             const botoes = new ActionRowBuilder().addComponents(
@@ -121,34 +104,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
             await canal.send({
                 content:
                 `📋 **NOVO PEDIDO DE SET**\n\n` +
-                `🆔 ID: ${id}\n` +
-                `👤 Nome: ${nome}\n` +
-                `🏥 Unidade: ${unidade}\n` +
-                `💼 Cargo: ${cargo}\n` +
-                `📌 Responsável: ${responsavel}\n\n` +
+                `🆔 ID: ${dados.id}\n` +
+                `👤 Nome: ${dados.nome}\n` +
+                `🏥 Unidade: ${dados.unidade}\n` +
+                `💼 Cargo: ${dados.cargo}\n` +
+                `📌 Responsável: ${dados.responsavel}\n\n` +
                 `⏳ Status: Pendente`,
                 components: [botoes]
             });
 
-            await interaction.reply({
+            return interaction.reply({
                 content: "✅ Pedido enviado!",
                 ephemeral: true
             });
         }
 
-        // APROVAR
         if (interaction.isButton() && interaction.customId === 'aprovar') {
-
-            await interaction.update({
+            return interaction.update({
                 content: interaction.message.content.replace('Pendente', 'Aprovado ✅'),
                 components: []
             });
         }
 
-        // REPROVAR
         if (interaction.isButton() && interaction.customId === 'reprovar') {
-
-            await interaction.update({
+            return interaction.update({
                 content: interaction.message.content.replace('Pendente', 'Reprovado ❌'),
                 components: []
             });
@@ -161,3 +140,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // LOGIN
 client.login(TOKEN);
+
+// ANTI CRASH
+process.on('unhandledRejection', console.error);
+process.on('uncaughtException', console.error);
