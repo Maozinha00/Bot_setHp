@@ -149,7 +149,7 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
   }
 
   // =========================
-  // 📋 ABRIR FORMULÁRIO
+  // 📋 FORM MODAL
   // =========================
   if (interaction.isButton() && interaction.customId === "abrir_set") {
 
@@ -185,7 +185,7 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
   }
 
   // =========================
-  // 📩 ENVIO PARA ANÁLISE
+  // 📩 ENVIO PARA ANÁLISE (CORRIGIDO)
   // =========================
   if (interaction.isModalSubmit() && interaction.customId === "form_set") {
 
@@ -193,7 +193,14 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
     const id = interaction.fields.getTextInputValue("id");
     const experiencia = interaction.fields.getTextInputValue("experiencia");
 
-    const channel = await client.channels.fetch(APPROVAL_CHANNEL_ID);
+    const channel = interaction.guild.channels.cache.get(APPROVAL_CHANNEL_ID);
+
+    if (!channel) {
+      return interaction.reply({
+        content: "❌ Canal de análise não encontrado ou sem permissão.",
+        flags: 64
+      });
+    }
 
     const embed = new EmbedBuilder()
       .setColor("#facc15")
@@ -274,7 +281,7 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
 
         await member.setNickname(nick).catch(() => {});
 
-        const requestChannel = await client.channels.fetch(REQUEST_CHANNEL_ID);
+        const requestChannel = interaction.guild.channels.cache.get(REQUEST_CHANNEL_ID);
 
         await requestChannel.send(
 `📁 **PRONTUÁRIO MÉDICO - HOSPITAL BELLA**
