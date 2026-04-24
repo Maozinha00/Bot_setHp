@@ -26,8 +26,11 @@ const ROLE_PARAMEDICO_ID = "1477683902079303934";
 const ROLE_MEMBRO_HP_ID = "1477683902079303932";
 
 // 📌 CANAIS
-const REQUEST_CHANNEL_ID = "1495178025602515177"; // prontuário
-const APPROVAL_CHANNEL_ID = "1495790507182522450"; // análise
+const REQUEST_CHANNEL_ID = "1495178025602515177";
+const APPROVAL_CHANNEL_ID = "1495790507182522450";
+
+// 🔗 SEGUNDO DISCORD (OBRIGATÓRIO)
+const SECOND_DISCORD_LINK = "https://discord.gg/y6tJAK3fF5";
 
 // 🤖 BOT
 const client = new Client({
@@ -185,7 +188,7 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
   }
 
   // =========================
-  // 📩 ENVIO PARA ANÁLISE
+  // 📩 ENVIO DO FORMULÁRIO
   // =========================
   if (interaction.isModalSubmit() && interaction.customId === "form_set") {
 
@@ -219,8 +222,31 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
 
     await channel.send({ embeds: [embed], components: [row] });
 
+    // 📩 DM OBRIGATÓRIO
+    interaction.user.send(
+`🏥 **HOSPITAL BELLA**
+
+📨 Seu cadastro foi enviado para análise!
+
+🚨 **OBRIGATÓRIO**
+Entre no segundo Discord e solicite seu SET:
+
+🔗 ${SECOND_DISCORD_LINK}
+
+⚠️ Sem isso, sua aprovação pode ser ignorada.`
+    ).catch(() => {});
+
+    // 📢 RESPOSTA NO CANAL
     return interaction.reply({
-      content: "📨 Cadastro enviado para análise!",
+      content:
+`📨 **Cadastro enviado para análise!**
+
+🚨 **OBRIGATÓRIO**
+Entre no segundo Discord e solicite seu SET:
+
+🔗 ${SECOND_DISCORD_LINK}
+
+⚠️ Sem entrar, seu pedido pode ser ignorado.`,
       flags: 64
     });
   }
@@ -269,7 +295,7 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
           ROLE_MEMBRO_HP_ID
         ]).catch(() => {});
 
-        let nick = `${nome} | ${id}`;
+        let nick = `[PARM] ${nome} | ${id}`;
         if (nick.length > 32) nick = nick.slice(0, 32);
 
         await member.setNickname(nick).catch(() => {});
