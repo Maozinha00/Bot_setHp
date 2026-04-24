@@ -1,212 +1,252 @@
-const {
-    Client,
-    GatewayIntentBits,
-    Events,
-    ActionRowBuilder,
-    ButtonBuilder,
-    ButtonStyle,
-    ModalBuilder,
-    TextInputBuilder,
-    TextInputStyle
-} = require('discord.js');
+import "dotenv/config";
+import {
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  REST,
+  Routes,
+  SlashCommandBuilder
+} from "discord.js";
 
-// ================= CONFIG =================
+// 🔐 CONFIG
 const TOKEN = process.env.TOKEN;
-const CANAL_LOG = '1495178025602515177';
-const CANAL_APROVADOS = '1495790507182522450';
-const CARGO_ID = '1495178024759332915';
-// ==========================================
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
 
-if (!TOKEN) {
-    console.error("❌ TOKEN NÃO DEFINIDO!");
-    process.exit(1);
-}
+const LEADER_ROLE_ID = process.env.LEADER_ROLE_ID;
 
+// 🎖️ CARGOS
+const ROLE_PARAMEDICO_ID = "1477683902079303934";
+const ROLE_MEMBRO_HP_ID = "1477683902079303932";
+
+// 📌 CANAIS (PEGOS DO OUTRO BOT)
+const REQUEST_CHANNEL_ID = "1495178025602515177"; // LOG / PRONTUÁRIO
+const APPROVAL_CHANNEL_ID = "1495790507182522450"; // APROVAÇÃO
+
+// 🤖 BOT
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.MessageContent
-    ]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers
+  ]
 });
 
-// ========= ONLINE =========
-client.once(Events.ClientReady, () => {
-    console.log(`🔥 ${client.user.tag} ONLINE`);
+// 📌 COMANDOS
+const commands = [
+  new SlashCommandBuilder()
+    .setName("painelset")
+    .setDescription("Abrir painel do Hospital Bella")
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("limpar")
+    .setDescription("Apagar mensagens")
+    .addIntegerOption(option =>
+      option.setName("quantidade")
+        .setDescription("1 a 100")
+        .setRequired(true)
+    )
+    .toJSON()
+];
+
+// 🚀 REGISTRO
+const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+client.once("clientReady", async () => {
+  console.log(`🤖 Online: ${client.user.tag}`);
+
+  await rest.put(
+    Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+    { body: commands }
+  );
 });
 
-// ========= PAINEL =========
-client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot) return;
+// =========================
+// 📌 INTERAÇÕES
+// =========================
+client.on("interactionCreate", async (interaction) => {
 
-    if (message.content === '!setpainel') {
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('abrir_form')
-                .setLabel('📋 Pedir Set')
-                .setStyle(ButtonStyle.Primary)
+  // ================= COMANDOS =================
+  if (interaction.isChatInputCommand()) {
+
+    // ===== PAINEL =====
+    if (interaction.commandName === "painelset") {
+
+      const embed = new EmbedBuilder()
+        .setColor("#22c55e")
+        .setTitle("🏥 HOSPITAL BELLA")
+        .setDescription(
+`━━━━━━━━━━━━━━━━━━━
+👨‍⚕️ **RECRUTAMENTO HP**
+
+Entre para a equipe médica.
+
+Clique abaixo para iniciar seu cadastro.
+━━━━━━━━━━━━━━━━━━━`
         );
 
-        await message.channel.send({
-            content: "🏥 **HOSPITAL BELLA RP**\nClique para solicitar seu cargo:",
-            components: [row]
-        });
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("abrir_set")
+          .setLabel("📋 Fazer Cadastro")
+          .setStyle(ButtonStyle.Success)
+      );
+
+      return interaction.reply({ embeds: [embed], components: [row] });
     }
-});
 
-// ========= INTERAÇÕES =========
-client.on(Events.InteractionCreate, async (interaction) => {
-    try {
+    // ===== LIMPAR =====
+    if (interaction.commandName === "limpar") {
 
-        // ===== FORM =====
-        if (interaction.isButton() && interaction.customId === 'abrir_form') {
+      const quantidade = interaction.options.getInteger("quantidade");
 
-            const modal = new ModalBuilder()
-                .setCustomId('form_set')
-                .setTitle('📋 Pedido de Set');
+      if (!interaction.member.roles.cache.has(LEADER_ROLE_ID)) {
+        return interaction.reply({ content: "❌ Sem permissão.", flags: 64 });
+      }
 
-            const campo = (id, label) =>
-                new ActionRowBuilder().addComponents(
-                    new TextInputBuilder()
-                        .setCustomId(id)
-                        .setLabel(label)
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true)
-                );
+      await interaction.channel.bulkDelete(quantidade, true);
 
-            modal.addComponents(
-                campo('id', 'ID'),
-                campo('nome', 'Nome'),
-                campo('unidade', 'Unidade'),
-                campo('cargo', 'Cargo desejado'),
-                campo('responsavel', 'Responsável (@)')
-            );
-
-            return interaction.showModal(modal);
-        }
-
-        // ===== ENVIO =====
-        if (interaction.isModalSubmit() && interaction.customId === 'form_set') {
-
-            const canal = await client.channels.fetch(CANAL_LOG).catch(() => null);
-
-            if (!canal) {
-                return interaction.reply({ content: "❌ Canal inválido", ephemeral: true });
-            }
-
-            const dados = {
-                user: interaction.user.id,
-                id: interaction.fields.getTextInputValue('id'),
-                nome: interaction.fields.getTextInputValue('nome'),
-                unidade: interaction.fields.getTextInputValue('unidade'),
-                cargo: interaction.fields.getTextInputValue('cargo'),
-                responsavel: interaction.fields.getTextInputValue('responsavel')
-            };
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`aprovar_${dados.user}`)
-                    .setLabel('✅ Aprovar')
-                    .setStyle(ButtonStyle.Success),
-                new ButtonBuilder()
-                    .setCustomId(`reprovar_${dados.user}`)
-                    .setLabel('❌ Reprovar')
-                    .setStyle(ButtonStyle.Danger)
-            );
-
-            const msg = await canal.send({
-                content:
-                    `📋 **PEDIDO DE SET**\n\n` +
-                    "```" +
-                    `Nome: ${dados.nome}\n` +
-                    `ID: ${dados.id}\n` +
-                    `Unidade: ${dados.unidade}\n` +
-                    `Cargo: ${dados.cargo}\n` +
-                    `Responsável: ${dados.responsavel}\n` +
-                    "```\n" +
-                    `👤 Usuário: <@${dados.user}>\n` +
-                    `⏳ Status: Pendente`,
-                components: [row]
-            });
-
-            // 🔥 SALVA DADOS NA MENSAGEM (IMPORTANTE)
-            await msg.edit({
-                content: msg.content + `\n\n📦 DATA:||${JSON.stringify(dados)}||`
-            });
-
-            return interaction.reply({
-                content: "✅ Pedido enviado!",
-                ephemeral: true
-            });
-        }
-
-        // ===== APROVAR =====
-        if (interaction.isButton() && interaction.customId.startsWith('aprovar_')) {
-
-            const userId = interaction.customId.split('_')[1];
-
-            const membro = await interaction.guild.members.fetch(userId).catch(() => null);
-
-            if (!membro) {
-                return interaction.reply({ content: "❌ Usuário não encontrado", ephemeral: true });
-            }
-
-            // 🔥 PEGAR DADOS SALVOS NA MENSAGEM
-            const raw = interaction.message.content.split('📦 DATA:||')[1];
-            const dados = JSON.parse(raw.replace('||', '').trim());
-
-            await membro.roles.add(CARGO_ID).catch(() => null);
-            await membro.send("✅ Seu set foi aprovado!").catch(() => null);
-
-            const canalAprovados = await client.channels.fetch(CANAL_APROVADOS).catch(() => null);
-
-            if (canalAprovados) {
-                await canalAprovados.send(
-                    `📋 **PEDIDO DE SET - APROVADO**\n\n` +
-                    "```" +
-                    `Nome: ${dados.nome}\n` +
-                    `ID: ${dados.id}\n` +
-                    `Unidade: ${dados.unidade}\n` +
-                    `Cargo: ${dados.cargo}\n` +
-                    `Responsável: ${dados.responsavel}\n` +
-                    "```\n" +
-                    `👤 Usuário: <@${userId}>\n` +
-                    `👮 Aprovado por: <@${interaction.user.id}> ✅`
-                );
-            }
-
-            return interaction.update({
-                content: interaction.message.content.replace('Pendente', `Aprovado por <@${interaction.user.id}> ✅`),
-                components: []
-            });
-        }
-
-        // ===== REPROVAR =====
-        if (interaction.isButton() && interaction.customId.startsWith('reprovar_')) {
-
-            const userId = interaction.customId.split('_')[1];
-
-            const membro = await interaction.guild.members.fetch(userId).catch(() => null);
-
-            if (membro) {
-                await membro.send("❌ Seu pedido foi recusado.").catch(() => null);
-            }
-
-            return interaction.update({
-                content: interaction.message.content.replace('Pendente', `Reprovado por <@${interaction.user.id}> ❌`),
-                components: []
-            });
-        }
-
-    } catch (err) {
-        console.error("🚨 ERRO:", err);
+      return interaction.reply({
+        content: `🧹 ${quantidade} mensagens apagadas`,
+        flags: 64
+      });
     }
+  }
+
+  // ================= FORM =================
+  if (interaction.isButton() && interaction.customId === "abrir_set") {
+
+    const modal = new ModalBuilder()
+      .setCustomId("form_set")
+      .setTitle("Cadastro Hospital");
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId("nome")
+          .setLabel("Nome RP")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId("id")
+          .setLabel("ID")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId("exp")
+          .setLabel("Experiência")
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(true)
+      )
+    );
+
+    return interaction.showModal(modal);
+  }
+
+  // ================= ENVIO =================
+  if (interaction.isModalSubmit() && interaction.customId === "form_set") {
+
+    const nome = interaction.fields.getTextInputValue("nome");
+    const id = interaction.fields.getTextInputValue("id");
+    const exp = interaction.fields.getTextInputValue("exp");
+
+    const canal = await client.channels.fetch(APPROVAL_CHANNEL_ID);
+
+    const embed = new EmbedBuilder()
+      .setColor("#facc15")
+      .setTitle("📋 NOVO CADASTRO")
+      .addFields(
+        { name: "Nome", value: nome },
+        { name: "ID", value: id },
+        { name: "Experiência", value: exp },
+        { name: "Discord", value: `<@${interaction.user.id}>` }
+      );
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`aprovar_${interaction.user.id}`)
+        .setLabel("Aprovar")
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId(`recusar_${interaction.user.id}`)
+        .setLabel("Recusar")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    await canal.send({ embeds: [embed], components: [row] });
+
+    return interaction.reply({
+      content: "📨 Enviado para análise!",
+      flags: 64
+    });
+  }
+
+  // ================= APROVAR =================
+  if (interaction.isButton() && interaction.customId.startsWith("aprovar_")) {
+
+    await interaction.deferReply({ flags: 64 });
+
+    const userId = interaction.customId.split("_")[1];
+    const membro = await interaction.guild.members.fetch(userId);
+
+    const embed = interaction.message.embeds[0];
+    const nome = embed.fields[0].value;
+    const id = embed.fields[1].value;
+
+    await membro.roles.add([
+      ROLE_PARAMEDICO_ID,
+      ROLE_MEMBRO_HP_ID
+    ]);
+
+    let nick = `${nome} | ${id}`;
+    if (nick.length > 32) nick = nick.slice(0, 32);
+
+    await membro.setNickname(nick).catch(() => {});
+
+    const canalLog = await client.channels.fetch(REQUEST_CHANNEL_ID);
+
+    await canalLog.send(
+`📁 **PRONTUÁRIO MÉDICO**
+━━━━━━━━━━━━━━━━━━━
+👤 ${nome}
+🆔 ${id}
+🏷️ ${nick}
+🩺 Paramédico
+👨‍⚕️ Aprovado por: <@${interaction.user.id}>
+━━━━━━━━━━━━━━━━━━━`
+    );
+
+    await interaction.message.delete().catch(() => {});
+
+    return interaction.editReply("✅ Aprovado!");
+  }
+
+  // ================= RECUSAR =================
+  if (interaction.isButton() && interaction.customId.startsWith("recusar_")) {
+
+    await interaction.message.delete().catch(() => {});
+
+    return interaction.reply({
+      content: "❌ Reprovado",
+      flags: 64
+    });
+  }
 });
 
 // LOGIN
 client.login(TOKEN);
 
 // ANTI-CRASH
-process.on('unhandledRejection', console.error);
-process.on('uncaughtException', console.error);
+process.on("unhandledRejection", console.error);
+process.on("uncaughtException", console.error);
