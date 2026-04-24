@@ -269,7 +269,8 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
           ROLE_MEMBRO_HP_ID
         ]).catch(() => {});
 
-        let nick = `${nome} | ${id}`;
+        // 🔥 NICK COM PREFIXO
+        let nick = `[PARM] ${nome} | ${id}`;
         if (nick.length > 32) nick = nick.slice(0, 32);
 
         await member.setNickname(nick).catch(() => {});
