@@ -1,4 +1,5 @@
 import "dotenv/config";
+import express from "express";
 import {
   Client,
   GatewayIntentBits,
@@ -14,22 +15,36 @@ import {
   SlashCommandBuilder
 } from "discord.js";
 
-// 🔐 CONFIG
+/* =========================
+   🌐 KEEP ALIVE
+========================= */
+const app = express();
+app.get("/", (_, res) => res.send("Bot online 🔥"));
+app.listen(3000, () => console.log("🌐 Web server ativo"));
+
+/* =========================
+   🔐 CONFIG
+========================= */
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
-
 const LEADER_ROLE_ID = process.env.LEADER_ROLE_ID;
 
-// 🎖️ CARGOS
+/* =========================
+   🎖️ CARGOS
+========================= */
 const ROLE_PARAMEDICO_ID = "1477683902079303934";
 const ROLE_MEMBRO_HP_ID = "1477683902079303932";
 
-// 📌 CANAIS
-const REQUEST_CHANNEL_ID = "1495178025602515177"; // prontuário
-const APPROVAL_CHANNEL_ID = "1497304750214090846"; // análise
+/* =========================
+   📌 CANAIS
+========================= */
+const ANALISE_CHANNEL_ID = "1497304750214090846";
+const PRONTUARIO_CHANNEL_ID = "1495178025602515177";
 
-// 🤖 BOT
+/* =========================
+   🤖 BOT
+========================= */
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -37,11 +52,14 @@ const client = new Client({
   ]
 });
 
-// 📌 COMANDOS
+/* =========================
+   📌 COMANDOS
+========================= */
 const commands = [
+
   new SlashCommandBuilder()
     .setName("painelset")
-    .setDescription("Abrir painel de recrutamento do Hospital Bella")
+    .setDescription("Abrir painel de setagem HP")
     .toJSON(),
 
   new SlashCommandBuilder()
@@ -49,61 +67,61 @@ const commands = [
     .setDescription("Apagar mensagens do canal")
     .addIntegerOption(option =>
       option.setName("quantidade")
-        .setDescription("Quantidade de mensagens (1-100)")
+        .setDescription("Quantidade (1-100)")
         .setRequired(true)
     )
     .toJSON()
+
 ];
 
-// 🚀 REGISTRO
+/* =========================
+   🚀 REGISTRO
+========================= */
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-client.once("clientReady", async () => {
+client.once("ready", async () => {
   console.log(`🤖 Online: ${client.user.tag}`);
 
-  try {
-    await rest.put(
-      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-      { body: commands }
-    );
-    console.log("✅ Comandos registrados!");
-  } catch (err) {
-    console.error(err);
-  }
+  await rest.put(
+    Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+    { body: commands }
+  );
+
+  console.log("✅ Comandos registrados!");
 });
 
-// =========================
-// 📌 INTERAÇÕES
-// =========================
+/* =========================
+   📌 INTERAÇÕES
+========================= */
 client.on("interactionCreate", async (interaction) => {
 
-  // =========================
-  // 📌 COMANDOS
-  // =========================
+  /* =========================
+     📌 COMANDOS
+  ========================= */
   if (interaction.isChatInputCommand()) {
 
-    // ===== PAINEL =====
+    // =========================
+    // 📂 PAINEL SETAGEM (ESTILO IMAGEM)
+    // =========================
     if (interaction.commandName === "painelset") {
 
       const embed = new EmbedBuilder()
-        .setColor("#22c55e")
-        .setTitle("🏥 HOSPITAL BELLA")
+        .setColor("#5b0f0f")
+        .setTitle("📂 SOLICITAR SETAGEM")
         .setDescription(
-`━━━━━━━━━━━━━━━━━━━
-👨‍⚕️ **RECRUTAMENTO OFICIAL - HP**
+`Para solicitar uma setagem, clique no botão abaixo e preencha as informações solicitadas.
 
-Faça parte da equipe médica e ajude a salvar vidas no RP.
-
-📋 Clique no botão abaixo para realizar seu cadastro.
-━━━━━━━━━━━━━━━━━━━`
+⚠️ Caso ocorra algum problema, abra um ticket
+⚠️ Não solicite mais de uma setagem por vez
+📨 Após a solicitação, será enviado para análise.`
         )
-        .setFooter({ text: "Sistema Hospitalar • Bella RP" });
+        .setFooter({ text: "Sistema Hospitalar • HP" });
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setCustomId("abrir_set")
-          .setLabel("📋 Fazer Cadastro")
-          .setStyle(ButtonStyle.Success)
+          .setCustomId("pedir_set")
+          .setLabel("📥 Pedir SET")
+          .setStyle(ButtonStyle.Secondary)
       );
 
       return interaction.reply({
@@ -112,7 +130,9 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
       });
     }
 
-    // ===== LIMPAR =====
+    // =========================
+    // 🧹 LIMPAR (ORIGINAL)
+    // =========================
     if (interaction.commandName === "limpar") {
 
       const quantidade = interaction.options.getInteger("quantidade");
@@ -139,23 +159,23 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
           flags: 64
         });
 
-      } catch (err) {
+      } catch {
         return interaction.reply({
-          content: "❌ Erro ao limpar mensagens.",
+          content: "❌ Erro ao apagar mensagens.",
           flags: 64
         });
       }
     }
   }
 
-  // =========================
-  // 📋 FORM MODAL
-  // =========================
-  if (interaction.isButton() && interaction.customId === "abrir_set") {
+  /* =========================
+     📋 MODAL
+  ========================= */
+  if (interaction.isButton() && interaction.customId === "pedir_set") {
 
     const modal = new ModalBuilder()
-      .setCustomId("form_set")
-      .setTitle("Cadastro Hospital Bella");
+      .setCustomId("modal_set")
+      .setTitle("Solicitação de Setagem");
 
     modal.addComponents(
       new ActionRowBuilder().addComponents(
@@ -168,14 +188,14 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId("id")
-          .setLabel("ID do Jogador")
+          .setLabel("ID")
           .setStyle(TextInputStyle.Short)
           .setRequired(true)
       ),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId("experiencia")
-          .setLabel("Experiência na área médica")
+          .setLabel("Experiência")
           .setStyle(TextInputStyle.Paragraph)
           .setRequired(true)
       )
@@ -184,32 +204,25 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
     return interaction.showModal(modal);
   }
 
-  // =========================
-  // 📩 ENVIO PARA ANÁLISE (CORRIGIDO)
-  // =========================
-  if (interaction.isModalSubmit() && interaction.customId === "form_set") {
+  /* =========================
+     📨 ENVIO PRA ANÁLISE
+  ========================= */
+  if (interaction.isModalSubmit() && interaction.customId === "modal_set") {
 
     const nome = interaction.fields.getTextInputValue("nome");
     const id = interaction.fields.getTextInputValue("id");
     const experiencia = interaction.fields.getTextInputValue("experiencia");
 
-    const channel = interaction.guild.channels.cache.get(APPROVAL_CHANNEL_ID);
-
-    if (!channel) {
-      return interaction.reply({
-        content: "❌ Canal de análise não encontrado ou sem permissão.",
-        flags: 64
-      });
-    }
+    const canal = interaction.guild.channels.cache.get(ANALISE_CHANNEL_ID);
 
     const embed = new EmbedBuilder()
       .setColor("#facc15")
-      .setTitle("📋 NOVO CADASTRO - HOSPITAL")
+      .setTitle("📨 NOVA SOLICITAÇÃO")
       .addFields(
         { name: "👤 Nome", value: nome },
         { name: "🆔 ID", value: id },
         { name: "🩺 Experiência", value: experiencia },
-        { name: "📌 Discord", value: `<@${interaction.user.id}>` }
+        { name: "Discord", value: `<@${interaction.user.id}>` }
       );
 
     const row = new ActionRowBuilder().addComponents(
@@ -224,95 +237,78 @@ Faça parte da equipe médica e ajude a salvar vidas no RP.
         .setStyle(ButtonStyle.Danger)
     );
 
-    await channel.send({ embeds: [embed], components: [row] });
+    await canal.send({ embeds: [embed], components: [row] });
 
+    // 🔥 IGUAL DA IMAGEM (mensagem privada)
     return interaction.reply({
-      content: "📨 Cadastro enviado para análise!",
+      content: "📨 Sua solicitação de setagem foi enviada para análise!",
       flags: 64
     });
   }
 
-  // =========================
-  // ✅ APROVAR / ❌ RECUSAR
-  // =========================
+  /* =========================
+     ✅ APROVAR / ❌ RECUSAR
+  ========================= */
   if (
     interaction.isButton() &&
-    (interaction.customId.startsWith("aprovar_") || interaction.customId.startsWith("recusar_"))
+    (interaction.customId.startsWith("aprovar_") ||
+     interaction.customId.startsWith("recusar_"))
   ) {
 
     await interaction.deferReply({ flags: 64 });
 
-    try {
-      const executor = await interaction.guild.members.fetch(interaction.user.id);
+    if (!interaction.member.roles.cache.has(LEADER_ROLE_ID)) {
+      return interaction.editReply("❌ Sem permissão.");
+    }
 
-      if (!executor.roles.cache.has(LEADER_ROLE_ID)) {
-        return interaction.editReply("❌ Você não tem permissão.");
-      }
+    const [acao, userId] = interaction.customId.split("_");
+    const membro = await interaction.guild.members.fetch(userId);
 
-      const [action, userId] = interaction.customId.split("_");
-      const member = await interaction.guild.members.fetch(userId);
+    const embed = interaction.message.embeds[0];
+    const nome = embed.fields[0].value;
+    const id = embed.fields[1].value;
 
-      const embed = interaction.message.embeds[0];
-      const nome = embed.fields[0].value;
-      const id = embed.fields[1].value;
+    await interaction.message.delete().catch(() => {});
 
-      await interaction.message.delete().catch(() => {});
+    if (acao === "recusar") {
+      return interaction.editReply(`❌ REPROVADO\n👤 ${nome}`);
+    }
 
-      // ❌ RECUSAR
-      if (action === "recusar") {
-        return interaction.editReply(
-`❌ **CADASTRO REPROVADO**
+    if (acao === "aprovar") {
 
-👤 ${nome}
-🆔 ${id}`
-        );
-      }
+      await membro.roles.add([
+        ROLE_PARAMEDICO_ID,
+        ROLE_MEMBRO_HP_ID
+      ]).catch(() => {});
 
-      // ✅ APROVAR
-      if (action === "aprovar") {
+      let nick = `${nome} | ${id}`;
+      if (nick.length > 32) nick = nick.slice(0, 32);
 
-        await member.roles.add([
-          ROLE_PARAMEDICO_ID,
-          ROLE_MEMBRO_HP_ID
-        ]).catch(() => {});
+      await membro.setNickname(nick).catch(() => {});
 
-        let nick = `${nome} | ${id}`;
-        if (nick.length > 32) nick = nick.slice(0, 32);
+      const prontuario = interaction.guild.channels.cache.get(PRONTUARIO_CHANNEL_ID);
 
-        await member.setNickname(nick).catch(() => {});
-
-        const requestChannel = interaction.guild.channels.cache.get(REQUEST_CHANNEL_ID);
-
-        await requestChannel.send(
-`📁 **PRONTUÁRIO MÉDICO - HOSPITAL BELLA**
+      await prontuario.send(
+`📁 PRONTUÁRIO MÉDICO
 ━━━━━━━━━━━━━━━━━━━
 👤 Nome: ${nome}
 🆔 ID: ${id}
-🏷️ Nick: ${nick}
-🩺 Cargo: Paramédico
 👨‍⚕️ Aprovado por: <@${interaction.user.id}>
 ━━━━━━━━━━━━━━━━━━━`
-        );
+      );
 
-        return interaction.editReply(
-`✅ **APROVADO COM SUCESSO**
-
-👤 ${nome}
-🆔 ${id}
-🏷️ ${nick}`
-        );
-      }
-
-    } catch (err) {
-      console.error(err);
-      return interaction.editReply("❌ Erro ao processar.");
+      return interaction.editReply(`✅ APROVADO\n👤 ${nome}`);
     }
   }
 });
 
-// 🔑 LOGIN
+/* =========================
+   🔑 LOGIN
+========================= */
 client.login(TOKEN);
 
-// 💥 ANTI-CRASH
+/* =========================
+   💥 ANTI-CRASH
+========================= */
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
